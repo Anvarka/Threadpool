@@ -15,6 +15,7 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains:annotations:23.0.0")
+    implementation("junit:junit:4.13.1")
     testImplementation(platform("org.junit:junit-bom:5.8.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

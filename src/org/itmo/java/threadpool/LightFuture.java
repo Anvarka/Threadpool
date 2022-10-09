@@ -9,4 +9,6 @@ public interface LightFuture<R> {
     @NotNull R get() throws LightExecutionException;
 
     <R1> @NotNull LightFuture<R1> thenApply(Function<R, R1> function);
+
+    void runTask();
 }
