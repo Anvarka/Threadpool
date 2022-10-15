@@ -27,25 +27,7 @@ public class ThreadPoolImpl implements ThreadPool {
 
     public ThreadPoolImpl(int threads) {
         for (int i = 0; i < threads; i++) {
-            Thread thread = new Thread(() -> {
-                while (!isShutdown.get() && !Thread.interrupted()) {
-                    LightFutureImpl<?> task;
-                    lock.lock();
-                    try {
-                        while (tasksQueue.isEmpty()) {
-                            hasTasksInQueue.await();
-                        }
-                        task = tasksQueue.remove();
-                    } catch (InterruptedException ignored) {
-                        return;
-                    } finally {
-                        lock.unlock();
-                    }
-                    if (!isShutdown.get() && !Thread.interrupted()) {
-                        task.runTask();
-                    }
-                }
-            });
+            Thread thread = new Thread(createTask());
             thread.start();
             listOfThreads.add(thread);
         }
@@ -82,4 +64,27 @@ public class ThreadPoolImpl implements ThreadPool {
     public int getNumberOfThreads() {
         return countOfThreads;
     }
+
+    private Runnable createTask() {
+        return () -> {
+            while (!isShutdown.get() && !Thread.interrupted()) {
+                LightFutureImpl<?> task;
+                lock.lock();
+                try {
+                    while (tasksQueue.isEmpty()) {
+                        hasTasksInQueue.await();
+                    }
+                    task = tasksQueue.remove();
+                } catch (InterruptedException ignored) {
+                    return;
+                } finally {
+                    lock.unlock();
+                }
+                if (!isShutdown.get() && !Thread.interrupted()) {
+                    task.runTask();
+                }
+            }
+        };
+    }
+
 }
