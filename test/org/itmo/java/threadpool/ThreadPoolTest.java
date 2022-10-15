@@ -4,7 +4,6 @@ package org.itmo.java.threadpool;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

@@ -10,25 +10,22 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- *
- * @param <R>
- *    value -- value of result
- *    isComplete -- flag of finishing task
- *    taskSupplier -- Supplier
- *    lock -- lock for tasksQueue
- *    conditionReadyTask -- Condition of finishing task
- *    threadPool -- need for thenApply
- *    exceptionFromGet -- for saving of exception
+ * @param <R> value -- value of result
+ *            isComplete -- flag of finishing task
+ *            taskSupplier -- Supplier
+ *            lock -- lock for tasksQueue
+ *            conditionReadyTask -- Condition of finishing task
+ *            threadPool -- need for thenApply
+ *            exceptionFromGet -- for saving of exception
  */
 public class LightFutureImpl<R> implements LightFuture<R> {
     volatile private R value;
-    AtomicBoolean isComplete = new AtomicBoolean(false);
-    public Supplier<R> taskSupplier;
-
-    Lock lock = new ReentrantLock();
-    Condition conditionReadyTask = lock.newCondition();
-    ThreadPool threadPool;
-    LightExecutionException exceptionFromGet = null;
+    private final AtomicBoolean isComplete = new AtomicBoolean(false);
+    private final Supplier<R> taskSupplier;
+    private final Lock lock = new ReentrantLock();
+    private final Condition conditionReadyTask = lock.newCondition();
+    private final ThreadPool threadPool;
+    private LightExecutionException exceptionFromGet = null;
 
     public LightFutureImpl(Supplier<R> supplier, ThreadPool threadpool) {
         taskSupplier = supplier;
@@ -66,7 +63,6 @@ public class LightFutureImpl<R> implements LightFuture<R> {
         });
     }
 
-    @Override
     public void runTask() {
         lock.lock();
         try {
@@ -74,8 +70,9 @@ public class LightFutureImpl<R> implements LightFuture<R> {
         } catch (RuntimeException e) {
             exceptionFromGet = new LightExecutionException(e);
         } finally {
-            conditionReadyTask.signal();
+            System.out.println(Thread.currentThread().getName());
             isComplete.set(true);
+            conditionReadyTask.signal();
             lock.unlock();
         }
     }

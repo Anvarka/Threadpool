@@ -18,17 +18,18 @@ import java.util.function.Supplier;
  * hasTasksInQueue -- Condition of having task in queue
  */
 public class ThreadPoolImpl implements ThreadPool {
-    int countOfThreads;
-    AtomicBoolean isShutdown = new AtomicBoolean(false);
-    public Queue<LightFuture<?>> tasksQueue = new LinkedList<>();
-    Lock lock = new ReentrantLock();
-    Condition hasTasksInQueue = lock.newCondition();
+    private final int countOfThreads;
+    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+    private final Queue<LightFutureImpl<?>> tasksQueue = new LinkedList<>();
+    private final Lock lock = new ReentrantLock();
+    private final Condition hasTasksInQueue = lock.newCondition();
+    private final List<Thread> listOfThreads = new ArrayList<>();
 
     public ThreadPoolImpl(int threads) {
         for (int i = 0; i < threads; i++) {
             Thread thread = new Thread(() -> {
                 while (!isShutdown.get() && !Thread.interrupted()) {
-                    LightFuture<?> task = null;
+                    LightFutureImpl<?> task;
                     lock.lock();
                     try {
                         while (tasksQueue.isEmpty()) {
@@ -36,14 +37,17 @@ public class ThreadPoolImpl implements ThreadPool {
                         }
                         task = tasksQueue.remove();
                     } catch (InterruptedException ignored) {
+                        return;
                     } finally {
                         lock.unlock();
                     }
-                    assert task != null;
-                    task.runTask();
+                    if (!isShutdown.get() && !Thread.interrupted()) {
+                        task.runTask();
+                    }
                 }
             });
             thread.start();
+            listOfThreads.add(thread);
         }
         countOfThreads = threads;
     }
@@ -53,7 +57,7 @@ public class ThreadPoolImpl implements ThreadPool {
         if (!isShutdown.get()) {
             lock.lock();
             try {
-                LightFuture<R> newTask = new LightFutureImpl<>(supplier, this);
+                LightFutureImpl<R> newTask = new LightFutureImpl<>(supplier, this);
                 tasksQueue.add(newTask);
                 hasTasksInQueue.signal();
                 return newTask;
@@ -63,12 +67,15 @@ public class ThreadPoolImpl implements ThreadPool {
         } else {
             throw new RuntimeException("threadPool is shutdown");
         }
-
     }
 
     @Override
     public void shutdown() {
         isShutdown.set(true);
+        tasksQueue.clear();
+        for (Thread thread : listOfThreads) {
+            thread.interrupt();
+        }
     }
 
     @Override
