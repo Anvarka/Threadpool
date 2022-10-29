@@ -2,6 +2,8 @@ package org.itmo.java.threadpool;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -24,10 +26,11 @@ public class LightFutureImpl<R> implements LightFuture<R> {
     private final Supplier<R> taskSupplier;
     private final Lock lock = new ReentrantLock();
     private final Condition conditionReadyTask = lock.newCondition();
-    private final ThreadPool threadPool;
+    private final ThreadPoolImpl threadPool;
+    private final Queue<LightFutureImpl<?>> thenApplyTasksQueue = new LinkedList<>();
     private LightExecutionException exceptionFromGet = null;
 
-    public LightFutureImpl(Supplier<R> supplier, ThreadPool threadpool) {
+    public LightFutureImpl(Supplier<R> supplier, ThreadPoolImpl threadpool) {
         taskSupplier = supplier;
         threadPool = threadpool;
     }
@@ -54,13 +57,20 @@ public class LightFutureImpl<R> implements LightFuture<R> {
 
     @Override
     public @NotNull <R1> LightFuture<R1> thenApply(Function<R, R1> function) {
-        return threadPool.submit(() -> {
+        Supplier<R1> dependentTask = () -> {
             try {
                 return function.apply(get());
             } catch (LightExecutionException e) {
                 throw new RuntimeException(e);
             }
-        });
+        };
+        LightFutureImpl<R1> newTask = new LightFutureImpl<>(dependentTask, threadPool);
+        if (isReady()) {
+            return threadPool.submit(newTask);
+        } else {
+            thenApplyTasksQueue.add(newTask);
+            return newTask;
+        }
     }
 
     public void runTask() {
@@ -73,6 +83,9 @@ public class LightFutureImpl<R> implements LightFuture<R> {
             System.out.println(Thread.currentThread().getName());
             isComplete.set(true);
             conditionReadyTask.signal();
+            while(!thenApplyTasksQueue.isEmpty() && !threadPool.isShutdown.get()){
+                threadPool.submit(thenApplyTasksQueue.remove());
+            }
             lock.unlock();
         }
     }

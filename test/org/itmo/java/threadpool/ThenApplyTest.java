@@ -118,5 +118,29 @@ public class ThenApplyTest {
             }
         }
     }
+
+    @Test
+    public void thenApplyTimeTest() throws LightExecutionException {
+        ThreadPool executor = new ThreadPoolImpl(5);
+        List<LightFuture<String>> depTasks = new ArrayList<>();
+        List<LightFuture<String>> deepDepTasks = new ArrayList<>();
+
+        Supplier<String> bigTask = ThreadPoolTest.createPrimitiveTask("test", 10000);
+        LightFuture<String> bigTaskFuture = executor.submit(bigTask);
+
+        Function<String, String> fun = s -> s + " add info";
+
+        for (int i = 0; i < 10; i++) {
+            LightFuture<String> dependTask = bigTaskFuture.thenApply(fun);
+            LightFuture<String> deepDependTask = dependTask.thenApply(fun);
+            depTasks.add(dependTask);
+            deepDepTasks.add(deepDependTask);
+        }
+
+        String str = depTasks.get(9).get();
+        String deepRes = deepDepTasks.get(9).get();
+        Assertions.assertEquals(str, "test add info");
+        Assertions.assertEquals(deepRes, "test add info add info");
+    }
 }
 

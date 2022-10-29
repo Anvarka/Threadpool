@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  */
 public class ThreadPoolImpl implements ThreadPool {
     private final int countOfThreads;
-    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+    public final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final Queue<LightFutureImpl<?>> tasksQueue = new LinkedList<>();
     private final Lock lock = new ReentrantLock();
     private final Condition hasTasksInQueue = lock.newCondition();
@@ -40,6 +40,21 @@ public class ThreadPoolImpl implements ThreadPool {
             lock.lock();
             try {
                 LightFutureImpl<R> newTask = new LightFutureImpl<>(supplier, this);
+                tasksQueue.add(newTask);
+                hasTasksInQueue.signal();
+                return newTask;
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            throw new RuntimeException("threadPool is shutdown");
+        }
+    }
+
+    public @NotNull <R> LightFuture<R> submit(LightFutureImpl<R> newTask) {
+        if (!isShutdown.get()) {
+            lock.lock();
+            try {
                 tasksQueue.add(newTask);
                 hasTasksInQueue.signal();
                 return newTask;
