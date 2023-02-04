@@ -1,45 +1,33 @@
 # Pool
 
-* В задании нужно реализовать простой пул задач с фиксированным числом потоков (число задается в конструкторе)
-* При создании объекта `ThreadPoolImpl` в нем должно начать работу `n` потоков
-* У каждого потока есть два состояния: ожидание задачи / выполнение задачи
-* Задача — вычисление некоторого значения, вызов `get` у объекта типа `Supplier<R>`
-* При добавлении задачи, если в пуле есть ожидающий поток, то он должен приступить к ее исполнению. Иначе задача будет ожидать исполнения пока не освободится какой-нибудь поток
-* Задачи, принятые к исполнению, представлены в виде объектов интерфейса `LightFuture`
-* Метод `shutdown` должен завершить работу потоков. Для того чтобы прервать работу потока, рекомендуется пользоваться методом `Thread.interrupt()`
+* In the task, you need to implement a simple task pool with a fixed number of threads (the number is set in the constructor)
+* When creating a `ThreadPoolImpl` object, `n` threads should start working in it
+* Each thread has two states: waiting for a task / executing a task
+* The task is to calculate some value, call `get` on an object of type `Supplier<R>`
+* When adding a task, if there is a waiting thread in the pool, then it should start executing it. Otherwise, the task will wait for execution until some thread is freed.
+* Tasks accepted for execution are represented as objects of the `LightFuture` interface
+* The `shutdown` method must shut down the threads. To interrupt a thread, it is recommended to use the `Thread.interrupt()` method
 
 ---
 
-# LightFuture
+#lightfuture
 
-* Метод `isReady` возвращает `true`, если задача выполнена
-* Метод `get` возвращает результат выполнения задачи
-    * В случае, если соответствующий задаче `supplier` завершился с исключением, этот метод должен завершиться с исключением `LightExecutionException`
-    * Если результат еще не вычислен, метод ожидает его и возвращает полученное значение
+* The `isReady` method returns `true` if the task is completed
+* The `get` method returns the result of the task
+     * In case the `supplier` corresponding to the task exited with an exception, this method should exit with a `LightExecutionException`
+     * If the result has not yet been calculated, the method waits for it and returns the resulting value
 
-* Метод `thenApply` — принимает объект типа `Function`, который может быть применен к результату данной задачи `X` и возвращает новую задачу `Y`, принятую к исполнению
-    * Новая задача будет исполнена не ранее, чем завершится исходная
-    * В качестве аргумента объекту `Function` будет передан результат исходной задачи, и все `Y` должны исполняться на общих основаниях (т.е. должны разделяться между потоками пула)
-    * Метод `thenApply` может быть вызван несколько раз
-
----
-
-# Оценка
-
-* `isReady` и `get` -- 5 баллов
-* `thenApply` -- 2 балла
-* Тесты -- 3 балла
+* Method `thenApply` - accepts an object of type `Function` that can be applied to the result of this task `X` and returns a new task `Y` accepted for execution
+     * The new task will be executed no earlier than the original task is completed
+     * As an argument to the `Function` object, the result of the original task will be passed, and all `Y` must be executed on a common basis (i.e., must be shared between pool threads)
+     * The `thenApply` method can be called multiple times
 
 ---
 
-# Примечания
+# Notes
 
-* В данной работе запрещено использование содержимого пакета `java.util.concurrent`, кроме классов `ReentrantLock`, `Condition` и `Atomic*` из этого пакета
-* Все интерфейсные методы должны быть потокобезопасны
-* Для каждого базового сценария использования должен быть написан несложный тест
-    * Необходим стресс тест с большим количеством задач (> 1000)
-    * Также должен быть написан тест проверяющий, что в тред-пуле действительно не менее `n` потоков
-
-Мягкий дедлайн: 09.10.2022 23:59
-
-Жёсткий дедлайн: 16.10.2022 23:59
+* In this work, it is forbidden to use the contents of the `java.util.concurrent` package, except for the `ReentrantLock`, `Condition` and `Atomic*` classes from this package
+* All interface methods must be thread safe
+* A simple test should be written for each basic use case
+     * Requires a stress test with a large number of tasks (> 1000)
+     * A test must also be written to check that there are indeed at least `n` threads in the thread pool
